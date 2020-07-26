@@ -3,7 +3,7 @@ const socketio = require('socket.io');
 const http = require('http');
 const cors = require('cors');
 
-const {addUser, removeUser, getUser, getRoom}  = require('./users');
+const {addUser, removeUser, getUser, getRoom, getAllUser}  = require('./users');
 
 const port = process.env.port || 5000;
 
@@ -20,12 +20,16 @@ io.on('connection', (socket) => {
         if(error){
             return callback(error);
         }
-        
         socket.emit('message', {user: 'admin', text: `${user.name}, welcome ${user.room}`});
         socket.broadcast.to(user.room).emit('message', {user:'admin', text: `${user.name}, is joined`});
         io.to(user.room).emit('roomData', {room:user.room, users: getRoom(user.room)}) 
         socket.join(user.room);
-        callback();
+        const userList = getAllUser();
+        const clientList = [];
+        userList.map( data => {
+            clientList.push(data.name);
+        });
+        callback(clientList);
     });
 
     socket.on('sendMessage', (message, callback) => {
@@ -38,7 +42,6 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', ()=> {
         const user = removeUser(socket.id);
-
         if(user){
             io.to(user.room).emit('message', {user:'admin', text:`${user.name} has left`});
         }
