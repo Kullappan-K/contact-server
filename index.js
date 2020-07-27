@@ -13,8 +13,17 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 
+function removeStaticUser(contactList, active){
+    return contactList.filter((value) => {
+        return active.indexOf(value.trim().toLowerCase()) === -1;
+    });
+}
+
+var userList = [];
+
 io.on('connection', (socket) => {
     socket.on('join', ({name, room},callback) => {
+
         const {error, user} = addUser({id : socket.id, name, room});
 
         if(error){
@@ -24,12 +33,7 @@ io.on('connection', (socket) => {
         socket.broadcast.to(user.room).emit('message', {user:'admin', text: `${user.name}, is joined`});
         io.to(user.room).emit('roomData', {room:user.room, users: getRoom(user.room)}) 
         socket.join(user.room);
-        const userList = getAllUser();
-        const clientList = [];
-        userList.map( data => {
-            clientList.push(data.name);
-        });
-        callback(clientList);
+        callback();
     });
 
     socket.on('sendMessage', (message, callback) => {
@@ -45,6 +49,37 @@ io.on('connection', (socket) => {
         if(user){
             io.to(user.room).emit('message', {user:'admin', text:`${user.name} has left`});
         }
+        var dupUser = getAllUser();
+        userList = [];
+        dupUser.map( data => {
+            userList.push(data.name);
+         });
+    });
+    socket.on('getAllUser', ({name}, callback) => {
+        var contactList = ['Alex', 'Harris', 'Josh', 'Michael', 'John', 'Chris'];
+        userList.push(name.trim().toLowerCase());
+        var user = [];
+        var clientList = [];
+        if(user.length == 0){
+            //console.log(userList);
+            clientList = userList;
+        }else{
+            user = getAllUser();
+            user.map( data => {
+               clientList.push(data.name);
+            });
+        }
+        contactList = removeStaticUser(contactList, clientList);
+        callback(contactList);
+    });
+    socket.on('chatActiveUser', ({name}, callback) => {
+        var contactList = ['Alex', 'Harris', 'Josh', 'Michael', 'John', 'Chris'];
+        //userList.push(name.trim().toLowerCase());
+        var user = [];
+        var clientList = [];
+        clientList.push(name.trim().toLowerCase());
+        contactList = removeStaticUser(contactList, clientList);
+        callback(contactList);
     });
 });
 
